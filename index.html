@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SEO Toolkit — Analyze, Preview, and Optimize</title>
+<meta name="description" content="A free in-browser SEO toolkit: SERP preview, meta tag analyzer, keyword density, readability scoring, and slug generator." />
+<meta property="og:title" content="SEO Toolkit" />
+<meta property="og:description" content="Free in-browser SEO tools for content creators." />
+<meta property="og:type" content="website" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<header class="site-header">
+  <div class="container">
+    <h1>SEO Toolkit</h1>
+    <p class="tagline">Analyze, preview, and optimize — all in your browser.</p>
+  </div>
+</header>
+
+<nav class="tabs container" role="tablist">
+  <button class="tab active" data-tab="serp" role="tab">SERP Preview</button>
+  <button class="tab" data-tab="meta" role="tab">Meta Analyzer</button>
+  <button class="tab" data-tab="keywords" role="tab">Keyword Density</button>
+  <button class="tab" data-tab="readability" role="tab">Readability</button>
+  <button class="tab" data-tab="slug" role="tab">Slug Generator</button>
+</nav>
+
+<main class="container">
+
+  <section id="serp" class="panel active" role="tabpanel">
+    <h2>Google SERP Preview</h2>
+    <p class="hint">See how your page appears in search results. Titles render differently on mobile vs desktop.</p>
+    <div class="grid">
+      <div class="form">
+        <label>Title <span class="counter" id="serpTitleCount">0 / 60</span>
+          <input type="text" id="serpTitle" placeholder="Your page title" maxlength="120" />
+        </label>
+        <label>URL
+          <input type="text" id="serpUrl" placeholder="https://example.com/page" />
+        </label>
+        <label>Meta description <span class="counter" id="serpDescCount">0 / 160</span>
+          <textarea id="serpDesc" rows="4" placeholder="A compelling description of the page..." maxlength="300"></textarea>
+        </label>
+        <div class="toggle-row">
+          <button id="serpDeviceDesktop" class="toggle active">Desktop</button>
+          <button id="serpDeviceMobile" class="toggle">Mobile</button>
+        </div>
+      </div>
+
+      <div class="preview">
+        <div id="serpPreview" class="serp-card desktop">
+          <div class="serp-url" id="serpPreviewUrl">example.com › page</div>
+          <a class="serp-title" id="serpPreviewTitle">Your page title</a>
+          <p class="serp-desc" id="serpPreviewDesc">A compelling description of the page...</p>
+        </div>
+        <ul class="checklist" id="serpChecklist"></ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="meta" class="panel" role="tabpanel">
+    <h2>Meta Tag Analyzer</h2>
+    <p class="hint">Paste the HTML of a page's <code>&lt;head&gt;</code> — we'll extract and grade the SEO-relevant tags.</p>
+    <textarea id="metaInput" rows="10" placeholder="Paste HTML here..."></textarea>
+    <button id="metaAnalyze" class="primary">Analyze</button>
+    <div id="metaResults" class="results"></div>
+  </section>
+
+  <section id="keywords" class="panel" role="tabpanel">
+    <h2>Keyword Density</h2>
+    <p class="hint">Paste your content. We'll compute word and phrase frequencies.</p>
+    <textarea id="kwInput" rows="10" placeholder="Paste your content here..."></textarea>
+    <div class="toggle-row">
+      <label><input type="radio" name="ngram" value="1" checked /> 1 word</label>
+      <label><input type="radio" name="ngram" value="2" /> 2 words</label>
+      <label><input type="radio" name="ngram" value="3" /> 3 words</label>
+    </div>
+    <button id="kwAnalyze" class="primary">Analyze</button>
+    <div id="kwResults" class="results"></div>
+  </section>
+
+  <section id="readability" class="panel" role="tabpanel">
+    <h2>Readability Score</h2>
+    <p class="hint">Uses the Flesch Reading Ease formula. Higher scores are easier to read.</p>
+    <textarea id="readInput" rows="10" placeholder="Paste your content here..."></textarea>
+    <button id="readAnalyze" class="primary">Analyze</button>
+    <div id="readResults" class="results"></div>
+  </section>
+
+  <section id="slug" class="panel" role="tabpanel">
+    <h2>URL Slug Generator</h2>
+    <p class="hint">Produce a clean, SEO-friendly slug from any title.</p>
+    <input type="text" id="slugInput" placeholder="Enter a title..." />
+    <label class="checkbox">
+      <input type="checkbox" id="slugStopwords" checked />
+      Remove common stopwords (a, the, and, of, ...)
+    </label>
+    <div class="slug-output">
+      <code id="slugResult">your-slug-here</code>
+      <button id="slugCopy" class="secondary">Copy</button>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <p>All analysis happens locally in your browser. No data is sent anywhere.</p>
+  </div>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
