@@ -24,6 +24,33 @@
   const reconDoses = document.getElementById('reconDoses');
   const reconWarn = document.getElementById('reconWarn');
 
+  const vialLiquid = document.getElementById('vialLiquid');
+  const vialMeniscus = document.getElementById('vialMeniscus');
+  const vialLabel = document.getElementById('vialLabel');
+  const vialSubLabel = document.getElementById('vialSubLabel');
+  const vialCaption = document.getElementById('vialCaption');
+  const VIAL_MAX_ML = 10;
+  const VIAL_TOP = 30, VIAL_BOTTOM = 188;
+
+  function updateVial(ml, mgPerMl) {
+    if (!vialLiquid) return;
+    const pct = Math.min(1, ml / VIAL_MAX_ML);
+    const height = (VIAL_BOTTOM - VIAL_TOP) * pct;
+    const y = VIAL_BOTTOM - height;
+    vialLiquid.setAttribute('y', y);
+    vialLiquid.setAttribute('height', height);
+    vialMeniscus.setAttribute('cy', y);
+    if (ml > 0 && mgPerMl > 0) {
+      vialLabel.textContent = mgPerMl.toFixed(mgPerMl < 1 ? 2 : 1);
+      vialSubLabel.textContent = 'mg/mL';
+      vialCaption.textContent = ml.toFixed(1) + ' mL of water, ' + (mgPerMl * ml).toFixed(1) + ' mg peptide dissolved';
+    } else {
+      vialLabel.textContent = '—';
+      vialSubLabel.textContent = 'mg/mL';
+      vialCaption.textContent = 'Adjust inputs to see fill.';
+    }
+  }
+
   function renderRecon() {
     const mg = parseFloat(reconVialMg.value) || 0;
     const ml = parseFloat(reconWaterMl.value) || 0;
@@ -36,6 +63,7 @@
       reconUnits.textContent = '—';
       reconDoses.textContent = '—';
       reconWarn.hidden = true;
+      updateVial(ml, mg / Math.max(ml, 0.01));
       return;
     }
 
@@ -48,6 +76,7 @@
     reconVol.textContent = doseVolMl.toFixed(3) + ' mL';
     reconUnits.textContent = drawUnits.toFixed(1) + ' units';
     reconDoses.textContent = totalDoses + ' doses';
+    updateVial(ml, mg / ml);
 
     const syringeMax = unitsPerMl === 100 ? 100 : unitsPerMl;
     if (drawUnits > syringeMax) {
@@ -326,6 +355,448 @@
     if (abs >= 1) return n.toFixed(3);
     if (abs >= 0.001) return n.toFixed(4);
     return n.toExponential(3);
+  }
+
+  // ---------- Stack Timing Explorer ----------
+  const STACK_COLORS = ['#0b7a6b', '#7b3eff', '#d4351c', '#d48806', '#1a73e8', '#c026d3'];
+  const stackEntries = document.getElementById('stackEntries');
+  const stackCanvas = document.getElementById('stackChart');
+  const stackLegend = document.getElementById('stackLegend');
+  let stackData = [
+    { name: 'Compound A', half: 6, dose: 100, times: '08:00' },
+    { name: 'Compound B', half: 24, dose: 100, times: '08:00,20:00' }
+  ];
+
+  function renderStackEntries() {
+    stackEntries.innerHTML = '';
+    stackData.forEach((item, idx) => {
+      const row = document.createElement('div');
+      row.className = 'stack-entry';
+      row.innerHTML =
+        '<label>Name<input type="text" data-field="name" value="' + escapeAttr(item.name) + '" /></label>' +
+        '<label>Half-life (h)<input type="number" data-field="half" min="0.1" step="0.1" value="' + item.half + '" /></label>' +
+        '<label>Dose (a.u.)<input type="number" data-field="dose" min="0" step="10" value="' + item.dose + '" /></label>' +
+        '<label>Times (24h, comma-sep)<input type="text" data-field="times" placeholder="08:00,20:00" value="' + escapeAttr(item.times) + '" /></label>' +
+        '<button class="remove" data-idx="' + idx + '" aria-label="Remove">×</button>';
+
+      row.querySelectorAll('input').forEach(inp => {
+        inp.addEventListener('input', () => {
+          const field = inp.dataset.field;
+          stackData[idx][field] = field === 'half' || field === 'dose' ? parseFloat(inp.value) || 0 : inp.value;
+          renderStackChart();
+        });
+      });
+      row.querySelector('.remove').addEventListener('click', () => {
+        stackData.splice(idx, 1);
+        renderStackEntries();
+        renderStackChart();
+      });
+      stackEntries.appendChild(row);
+    });
+  }
+
+  function escapeAttr(s) { return String(s || '').replace(/"/g, '&quot;'); }
+
+  function parseTimes(str) {
+    return (str || '').split(',').map(t => {
+      const m = t.trim().match(/^(\d{1,2}):(\d{2})$/);
+      if (!m) return null;
+      return parseInt(m[1]) + parseInt(m[2]) / 60;
+    }).filter(v => v !== null);
+  }
+
+  function renderStackChart() {
+    const ctx = stackCanvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const cssW = stackCanvas.clientWidth || 600;
+    const cssH = 320;
+    stackCanvas.width = cssW * dpr;
+    stackCanvas.height = cssH * dpr;
+    stackCanvas.style.height = cssH + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    const pad = { l: 44, r: 14, t: 14, b: 30 };
+    const w = cssW - pad.l - pad.r;
+    const h = cssH - pad.t - pad.b;
+    const totalHours = 48;
+
+    ctx.clearRect(0, 0, cssW, cssH);
+    ctx.strokeStyle = '#e3e6ee';
+    ctx.fillStyle = '#6b7391';
+    ctx.font = '11px -apple-system, sans-serif';
+    ctx.lineWidth = 1;
+
+    for (let i = 0; i <= 4; i++) {
+      const y = pad.t + h - (h * i / 4);
+      ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(pad.l + w, y); ctx.stroke();
+      ctx.fillText((i * 25) + '%', 8, y + 3);
+    }
+    for (let i = 0; i <= 8; i++) {
+      const x = pad.l + (w * i / 8);
+      ctx.fillText((i * 6) + 'h', x - 8, cssH - 10);
+    }
+
+    ctx.strokeStyle = '#bbb';
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    const midX = pad.l + w * 0.5;
+    ctx.moveTo(midX, pad.t); ctx.lineTo(midX, pad.t + h); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillText('24h', midX - 10, pad.t + 10);
+
+    let legendHtml = '';
+    stackData.forEach((item, idx) => {
+      const color = STACK_COLORS[idx % STACK_COLORS.length];
+      const times = parseTimes(item.times);
+      const k = Math.log(2) / (item.half || 1);
+      if (!times.length || item.dose <= 0) {
+        legendHtml += legendItem(color, item.name + ' (no valid times)');
+        return;
+      }
+
+      const points = [];
+      const step = 0.25;
+      for (let t = 0; t <= totalHours; t += step) {
+        let c = 0;
+        for (const base of times) {
+          for (let cycle = 0; cycle < 3; cycle++) {
+            const dt = base + cycle * 24;
+            if (t >= dt) c += item.dose * Math.exp(-k * (t - dt));
+          }
+        }
+        points.push({ t, c });
+      }
+      const peak = Math.max(...points.map(p => p.c)) || 1;
+
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      points.forEach((p, i) => {
+        const x = pad.l + (p.t / totalHours) * w;
+        const y = pad.t + h - (p.c / peak) * h;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+
+      legendHtml += legendItem(color, item.name + ' — t½ ' + item.half + 'h, ' + times.length + ' dose(s)/24h');
+    });
+
+    stackLegend.innerHTML = legendHtml;
+  }
+
+  function legendItem(color, label) {
+    return '<span class="stack-legend-item"><span class="stack-legend-dot" style="background:' + color + '"></span>' + escapeHtml(label) + '</span>';
+  }
+
+  document.getElementById('stackAdd').addEventListener('click', () => {
+    if (stackData.length >= 6) return;
+    stackData.push({ name: 'Compound ' + String.fromCharCode(65 + stackData.length), half: 12, dose: 100, times: '08:00' });
+    renderStackEntries();
+    renderStackChart();
+  });
+
+  renderStackEntries();
+  renderStackChart();
+  window.addEventListener('resize', () => {
+    if (document.getElementById('stack').classList.contains('active')) renderStackChart();
+  });
+
+  // ---------- Injection Schedule ----------
+  const schedFreq = document.getElementById('schedFreq');
+  const schedCustom = document.getElementById('schedCustom');
+  const schedCustomWrap = document.getElementById('schedCustomWrap');
+  const schedStart = document.getElementById('schedStart');
+  const schedTime = document.getElementById('schedTime');
+  const schedWeeks = document.getElementById('schedWeeks');
+  const schedCalendar = document.getElementById('schedCalendar');
+  const schedSummary = document.getElementById('schedSummary');
+
+  schedStart.valueAsDate = new Date();
+
+  schedFreq.addEventListener('change', () => {
+    schedCustomWrap.hidden = schedFreq.value !== 'custom';
+    renderSchedule();
+  });
+
+  function renderSchedule() {
+    const interval = schedFreq.value === 'custom' ? parseFloat(schedCustom.value) || 24 : parseFloat(schedFreq.value);
+    const weeks = Math.max(1, Math.min(8, parseInt(schedWeeks.value) || 2));
+    const startDate = schedStart.valueAsDate || new Date();
+    const [hh, mm] = (schedTime.value || '08:00').split(':').map(Number);
+    const start = new Date(startDate);
+    start.setHours(hh || 0, mm || 0, 0, 0);
+
+    const totalHours = weeks * 7 * 24;
+    const events = [];
+    for (let t = 0; t <= totalHours; t += interval) {
+      const when = new Date(start.getTime() + t * 3600 * 1000);
+      events.push(when);
+    }
+
+    const firstDay = new Date(start);
+    firstDay.setHours(0, 0, 0, 0);
+    firstDay.setDate(firstDay.getDate() - firstDay.getDay());
+
+    let html = '';
+    ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].forEach(d => {
+      html += '<div class="calendar-head">' + d + '</div>';
+    });
+
+    const totalDays = weeks * 7 + ((start.getDay()));
+    for (let i = 0; i < totalDays; i++) {
+      const cellDate = new Date(firstDay);
+      cellDate.setDate(firstDay.getDate() + i);
+      const dayEvents = events.filter(e =>
+        e.getFullYear() === cellDate.getFullYear() &&
+        e.getMonth() === cellDate.getMonth() &&
+        e.getDate() === cellDate.getDate()
+      );
+      const muted = cellDate < firstDay || cellDate < start && cellDate.getDate() !== start.getDate();
+      const cls = 'calendar-day' + (dayEvents.length ? ' has-event' : '') + (cellDate < new Date(start.getFullYear(), start.getMonth(), start.getDate()) ? ' muted' : '');
+      html += '<div class="' + cls + '">';
+      html += '<div class="calendar-date">' + cellDate.getDate() + '</div>';
+      dayEvents.slice(0, 3).forEach(e => {
+        html += '<div class="calendar-event">' + String(e.getHours()).padStart(2, '0') + ':' + String(e.getMinutes()).padStart(2, '0') + '</div>';
+      });
+      if (dayEvents.length > 3) html += '<div class="calendar-event">+' + (dayEvents.length - 3) + '</div>';
+      html += '</div>';
+    }
+    schedCalendar.innerHTML = html;
+
+    const perWeek = (7 * 24) / interval;
+    schedSummary.innerHTML =
+      '<div class="result-row"><span class="result-label">Interval</span><span class="result-value">' + interval + ' hours</span></div>' +
+      '<div class="result-row"><span class="result-label">Administrations / week</span><span class="result-value">' + perWeek.toFixed(2) + '</span></div>' +
+      '<div class="result-row"><span class="result-label">Total in window</span><span class="result-value">' + events.length + '</span></div>';
+  }
+
+  [schedCustom, schedStart, schedTime, schedWeeks].forEach(el => {
+    el.addEventListener('input', renderSchedule);
+    el.addEventListener('change', renderSchedule);
+  });
+  renderSchedule();
+
+  // ---------- Vial Duration ----------
+  const durMg = document.getElementById('durMg');
+  const durMl = document.getElementById('durMl');
+  const durDose = document.getElementById('durDose');
+  const durPerDay = document.getElementById('durPerDay');
+  const durBac = document.getElementById('durBac');
+  const durDoses = document.getElementById('durDoses');
+  const durDays = document.getElementById('durDays');
+  const durEmpty = document.getElementById('durEmpty');
+  const durWaste = document.getElementById('durWaste');
+  const durWarn = document.getElementById('durWarn');
+
+  function renderDuration() {
+    const mg = parseFloat(durMg.value) || 0;
+    const ml = parseFloat(durMl.value) || 0;
+    const dose = parseFloat(durDose.value) || 0;
+    const perDay = parseFloat(durPerDay.value) || 0;
+    const bac = parseInt(durBac.value) || 28;
+
+    if (mg <= 0 || dose <= 0 || perDay <= 0 || ml <= 0) {
+      durDoses.textContent = '—'; durDays.textContent = '—'; durEmpty.textContent = '—'; durWaste.textContent = '—';
+      durWarn.hidden = true;
+      return;
+    }
+
+    const totalDoses = Math.floor((mg * 1000) / dose);
+    const days = totalDoses / perDay;
+    const emptyDate = new Date();
+    emptyDate.setDate(emptyDate.getDate() + Math.round(days));
+
+    durDoses.textContent = totalDoses;
+    durDays.textContent = days.toFixed(1) + ' days';
+    durEmpty.textContent = emptyDate.toLocaleDateString();
+
+    if (days > bac) {
+      const wastedDays = days - bac;
+      const wastedDoses = Math.round(wastedDays * perDay);
+      durWaste.textContent = wastedDoses + ' doses (~' + wastedDays.toFixed(1) + ' d past ' + bac + '-day BAC window)';
+      durWarn.textContent = 'Vial would outlast the ' + bac + '-day BAC reference shelf life by ~' + wastedDays.toFixed(1) + ' days. Adjust water volume or vial size to reduce waste.';
+      durWarn.hidden = false;
+    } else {
+      durWaste.textContent = '0 doses (within BAC window)';
+      durWarn.hidden = true;
+    }
+  }
+
+  [durMg, durMl, durDose, durPerDay, durBac].forEach(el => {
+    el.addEventListener('input', renderDuration);
+    el.addEventListener('change', renderDuration);
+  });
+  renderDuration();
+
+  // ---------- Research Topics Quiz ----------
+  const quizStage = document.getElementById('quizStage');
+
+  const QUIZ_QUESTIONS = [
+    {
+      id: 'focus',
+      q: 'Which research area are you exploring?',
+      opts: [
+        { v: 'recovery', t: 'Tissue repair & recovery' },
+        { v: 'metabolic', t: 'Metabolic & body composition' },
+        { v: 'sleep', t: 'Sleep & circadian research' },
+        { v: 'cognitive', t: 'Cognitive & neuropeptide research' },
+        { v: 'longevity', t: 'Longevity & senescence' },
+        { v: 'general', t: 'General pharmacology' }
+      ]
+    },
+    {
+      id: 'depth',
+      q: 'What level of background do you have?',
+      opts: [
+        { v: 'new', t: 'New to the topic' },
+        { v: 'some', t: 'Some familiarity' },
+        { v: 'experienced', t: 'Experienced reader' }
+      ]
+    }
+  ];
+
+  const TOPIC_MAP = {
+    recovery: {
+      title: 'Tissue repair & recovery literature',
+      areas: [
+        { h: 'Wound healing peptide research', p: 'Literature covers peptides studied in wound-healing models, tendon and ligament repair research, and gastrointestinal tissue studies. Search terms: "pentadecapeptide", "body protection compound", "tissue repair peptide".' },
+        { h: 'Angiogenesis research', p: 'Focuses on compounds studied for their role in blood vessel formation — a core topic in recovery literature.' }
+      ],
+      glossary: ['Bioavailability', 'Half-life (t½)', 'Subcutaneous (SC)'],
+      tools: ['recon', 'halflife', 'duration']
+    },
+    metabolic: {
+      title: 'Metabolic research literature',
+      areas: [
+        { h: 'Incretin & glucose regulation', p: 'Well-studied class in the peer-reviewed literature. Search terms: "GLP-1 receptor agonist", "GIP", "dual agonist peptide".' },
+        { h: 'Growth hormone secretagogue research', p: 'Literature examines secretagogue peptides and their effects on endogenous GH pulsatility in controlled studies.' }
+      ],
+      glossary: ['Bioavailability', 'Cmax', 'Steady state', 'Volume of distribution (Vd)'],
+      tools: ['halflife', 'stack', 'schedule']
+    },
+    sleep: {
+      title: 'Sleep & circadian literature',
+      areas: [
+        { h: 'GH pulsatility & sleep architecture', p: 'Research explores the relationship between GH pulsatility and slow-wave sleep in sleep-lab studies.' },
+        { h: 'Orexin / hypocretin research', p: 'A neuropeptide system heavily studied in narcolepsy and sleep regulation literature.' }
+      ],
+      glossary: ['Half-life (t½)', 'Cmax', 'Steady state'],
+      tools: ['halflife', 'schedule']
+    },
+    cognitive: {
+      title: 'Neuropeptide research literature',
+      areas: [
+        { h: 'Nootropic peptide research', p: 'Includes compounds studied in cognitive-enhancement and neuroprotection models. Search terms: "noopept", "semax", "selank", "cerebrolysin" — all discussed in peer-reviewed sources.' },
+        { h: 'Neurotrophic factor research', p: 'Peptide mimetics studied in the context of BDNF and NGF signaling pathways.' }
+      ],
+      glossary: ['Bioavailability', 'Volume of distribution (Vd)'],
+      tools: ['recon', 'halflife', 'duration']
+    },
+    longevity: {
+      title: 'Longevity & senescence literature',
+      areas: [
+        { h: 'Mitochondrial peptide research', p: 'Compounds studied for their role in mitochondrial function and oxidative stress pathways. Search terms: "MOTS-c", "humanin", "SS-31".' },
+        { h: 'Telomere biology', p: 'Peptides referenced in telomerase-related research. This is an early-stage field in the literature.' }
+      ],
+      glossary: ['Half-life (t½)', 'Steady state'],
+      tools: ['halflife', 'cycle']
+    },
+    general: {
+      title: 'General pharmacology background',
+      areas: [
+        { h: 'Pharmacokinetics fundamentals', p: 'Absorption, distribution, metabolism, elimination (ADME), half-life, and volume of distribution are the foundational concepts. Goodman & Gilman\'s textbook is the standard reference.' },
+        { h: 'Reconstitution & sterility', p: 'Laboratory handling practices for lyophilized compounds, including bacteriostatic vs sterile water, storage, and aliquoting.' }
+      ],
+      glossary: ['Bioavailability', 'Cmax', 'Half-life (t½)', 'Lyophilization', 'Reconstitution', 'Steady state', 'Volume of distribution (Vd)'],
+      tools: ['recon', 'halflife', 'convert']
+    }
+  };
+
+  const TOOL_LABELS = {
+    recon: 'Reconstitution Calculator',
+    halflife: 'Half-Life Simulator',
+    stack: 'Stack Timing',
+    schedule: 'Injection Schedule',
+    duration: 'Vial Duration',
+    cycle: 'Cycle Planner',
+    convert: 'Unit Converter'
+  };
+
+  let quizState = { step: 0, answers: {} };
+
+  function renderQuiz() {
+    if (quizState.step >= QUIZ_QUESTIONS.length) {
+      renderQuizResults();
+      return;
+    }
+    const q = QUIZ_QUESTIONS[quizState.step];
+    let html = '<div class="quiz-question"><h3>' + escapeHtml(q.q) + '</h3><div class="quiz-options">';
+    q.opts.forEach(opt => {
+      html += '<button class="quiz-option" data-v="' + escapeAttr(opt.v) + '">' + escapeHtml(opt.t) + '</button>';
+    });
+    html += '</div></div>';
+    quizStage.innerHTML = html;
+    quizStage.querySelectorAll('.quiz-option').forEach(btn => {
+      btn.addEventListener('click', () => {
+        quizState.answers[q.id] = btn.dataset.v;
+        quizState.step++;
+        renderQuiz();
+      });
+    });
+  }
+
+  function renderQuizResults() {
+    const focus = quizState.answers.focus || 'general';
+    const data = TOPIC_MAP[focus];
+    const depth = quizState.answers.depth || 'some';
+
+    let html = '<div class="quiz-results">';
+    html += '<h3>' + escapeHtml(data.title) + '</h3>';
+    html += '<p class="hint" style="margin:6px 0 0">Navigation only — not a recommendation. Read peer-reviewed literature (PubMed, Google Scholar) for evidence on any specific compound.</p>';
+
+    if (depth === 'new') {
+      html += '<div class="quiz-topic"><h4>Start here</h4><p>Before diving in, familiarize yourself with fundamentals: half-life, bioavailability, steady state, and reconstitution. The Glossary tab defines these.</p></div>';
+    }
+
+    data.areas.forEach(a => {
+      html += '<div class="quiz-topic"><h4>' + escapeHtml(a.h) + '</h4><p>' + escapeHtml(a.p) + '</p></div>';
+    });
+
+    html += '<h3 style="margin-top:22px">Suggested tools</h3><div class="quiz-suggested-tools">';
+    data.tools.forEach(t => {
+      html += '<button class="quiz-tool-chip" data-tool="' + t + '">' + escapeHtml(TOOL_LABELS[t]) + ' →</button>';
+    });
+    html += '</div>';
+
+    html += '<h3 style="margin-top:22px">Relevant glossary terms</h3><div class="quiz-suggested-tools">';
+    data.glossary.forEach(g => {
+      html += '<span class="quiz-tool-chip" style="cursor:default">' + escapeHtml(g) + '</span>';
+    });
+    html += '</div>';
+
+    html += '<button class="quiz-restart">Start over</button></div>';
+    quizStage.innerHTML = html;
+
+    quizStage.querySelectorAll('.quiz-tool-chip[data-tool]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tool = btn.dataset.tool;
+        const targetTab = document.querySelector('.tab[data-tab="' + tool + '"]');
+        if (targetTab) targetTab.click();
+      });
+    });
+    quizStage.querySelector('.quiz-restart').addEventListener('click', () => {
+      quizState = { step: 0, answers: {} };
+      renderQuiz();
+    });
+  }
+
+  renderQuiz();
+
+  function escapeHtml(str) {
+    return String(str || '').replace(/[&<>"']/g, c => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[c]);
   }
 
   renderHalfLife();

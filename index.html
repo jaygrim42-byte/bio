@@ -39,9 +39,13 @@
 
 <nav class="tabs container" role="tablist">
   <button class="tab active" data-tab="recon" role="tab">Reconstitution</button>
-  <button class="tab" data-tab="halflife" role="tab">Half-Life Simulator</button>
+  <button class="tab" data-tab="halflife" role="tab">Half-Life</button>
+  <button class="tab" data-tab="stack" role="tab">Stack Timing</button>
+  <button class="tab" data-tab="schedule" role="tab">Injection Schedule</button>
+  <button class="tab" data-tab="duration" role="tab">Vial Duration</button>
   <button class="tab" data-tab="cycle" role="tab">Cycle Planner</button>
   <button class="tab" data-tab="convert" role="tab">Unit Converter</button>
+  <button class="tab" data-tab="quiz" role="tab">Research Topics</button>
   <button class="tab" data-tab="glossary" role="tab">Glossary</button>
 </nav>
 
@@ -72,6 +76,35 @@
       </div>
 
       <div class="preview">
+        <div class="vial-visual">
+          <svg viewBox="0 0 120 200" class="vial-svg" aria-label="Vial fill visualization">
+            <defs>
+              <linearGradient id="liquidGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#7dd3c7" />
+                <stop offset="100%" stop-color="#0b7a6b" />
+              </linearGradient>
+              <linearGradient id="glassGrad" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="rgba(255,255,255,0.1)" />
+                <stop offset="50%" stop-color="rgba(255,255,255,0.0)" />
+                <stop offset="100%" stop-color="rgba(0,0,0,0.08)" />
+              </linearGradient>
+            </defs>
+            <rect x="42" y="8" width="36" height="14" rx="2" fill="#b0b5c4" />
+            <rect x="44" y="18" width="32" height="6" fill="#8a8f9f" />
+            <path d="M 36 28 Q 36 22 42 22 L 78 22 Q 84 22 84 28 L 84 180 Q 84 192 72 192 L 48 192 Q 36 192 36 180 Z" fill="#f0f4f7" stroke="#c5cbd6" stroke-width="1.5" />
+            <clipPath id="vialInterior">
+              <path d="M 38 30 L 82 30 L 82 180 Q 82 190 72 190 L 48 190 Q 38 190 38 180 Z" />
+            </clipPath>
+            <g clip-path="url(#vialInterior)">
+              <rect id="vialLiquid" x="38" y="190" width="44" height="0" fill="url(#liquidGrad)" />
+              <ellipse id="vialMeniscus" cx="60" cy="190" rx="22" ry="2.5" fill="#0b7a6b" opacity="0.4" />
+            </g>
+            <path d="M 36 28 Q 36 22 42 22 L 78 22 Q 84 22 84 28 L 84 180 Q 84 192 72 192 L 48 192 Q 36 192 36 180 Z" fill="url(#glassGrad)" />
+            <text x="60" y="110" text-anchor="middle" fill="#1b2033" font-size="10" font-weight="600" id="vialLabel">—</text>
+            <text x="60" y="124" text-anchor="middle" fill="#6b7391" font-size="8" id="vialSubLabel">mg/mL</text>
+          </svg>
+          <div class="vial-caption" id="vialCaption">Adjust inputs to see fill.</div>
+        </div>
         <div class="result-card" id="reconResult">
           <div class="result-row"><span class="result-label">Concentration</span><span class="result-value" id="reconConc">—</span></div>
           <div class="result-row"><span class="result-label">Volume per dose</span><span class="result-value" id="reconVol">—</span></div>
@@ -134,6 +167,100 @@
     <details class="faq">
       <summary>What is half-life?</summary>
       <p>Half-life (t½) is the time required for the concentration of a compound to decrease by 50% via elimination. After ~4–5 half-lives with consistent dosing, plasma concentration approaches steady state.</p>
+    </details>
+  </section>
+
+  <section id="stack" class="panel" role="tabpanel">
+    <h2>Stack Timing Explorer</h2>
+    <p class="hint">Add multiple compounds with half-lives and dose times within a 24-hour window. The overlap chart shows relative plasma-concentration curves so you can see where peaks and troughs intersect. <strong>Timing and math only — nothing here recommends what to stack or when.</strong></p>
+
+    <div class="stack-builder">
+      <div class="stack-entries" id="stackEntries"></div>
+      <button class="secondary" id="stackAdd">+ Add compound</button>
+    </div>
+
+    <canvas id="stackChart" width="600" height="320"></canvas>
+    <div id="stackLegend" class="stack-legend"></div>
+
+    <details class="faq">
+      <summary>How is the overlap computed?</summary>
+      <p>Each entry produces a first-order decay curve from its dose times over a simulated 48-hour window, allowing you to see how multiple schedules interact in timing. Concentrations are plotted as relative arbitrary units (each compound normalized to 100 at peak dose) — this is not a pharmacokinetic model of any specific substance.</p>
+    </details>
+  </section>
+
+  <section id="schedule" class="panel" role="tabpanel">
+    <h2>Injection Frequency Planner</h2>
+    <p class="hint">Pick a frequency and start time — the calendar shows a neutral weekly schedule. This is a spacing visualizer; it doesn't recommend any injection practice.</p>
+
+    <div class="grid">
+      <div class="form">
+        <label>Frequency
+          <select id="schedFreq">
+            <option value="24">Once per day</option>
+            <option value="12">Every 12 hours</option>
+            <option value="8">Every 8 hours</option>
+            <option value="48">Every 2 days</option>
+            <option value="72">Every 3 days</option>
+            <option value="168">Once per week</option>
+            <option value="custom">Custom (hours)</option>
+          </select>
+        </label>
+        <label id="schedCustomWrap" hidden>Interval (hours)
+          <input type="number" id="schedCustom" value="36" min="1" max="336" />
+        </label>
+        <label>Start date
+          <input type="date" id="schedStart" />
+        </label>
+        <label>Start time
+          <input type="time" id="schedTime" value="08:00" />
+        </label>
+        <label>Weeks to show
+          <input type="number" id="schedWeeks" value="2" min="1" max="8" />
+        </label>
+      </div>
+      <div class="preview">
+        <div id="schedCalendar" class="calendar"></div>
+        <div class="result-card" id="schedSummary"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="duration" class="panel" role="tabpanel">
+    <h2>Vial Usage Duration</h2>
+    <p class="hint">Estimate how many doses a vial produces and how long it lasts at a given frequency.</p>
+
+    <div class="grid">
+      <div class="form">
+        <label>Peptide in vial (mg)
+          <input type="number" id="durMg" value="5" step="0.1" min="0" />
+        </label>
+        <label>Water added (mL)
+          <input type="number" id="durMl" value="2" step="0.1" min="0" />
+        </label>
+        <label>Dose per administration (mcg)
+          <input type="number" id="durDose" value="250" step="10" min="0" />
+        </label>
+        <label>Administrations per day
+          <input type="number" id="durPerDay" value="1" step="0.5" min="0.1" max="10" />
+        </label>
+        <label>BAC water shelf life (days)
+          <input type="number" id="durBac" value="28" min="1" max="365" />
+        </label>
+      </div>
+      <div class="preview">
+        <div class="result-card">
+          <div class="result-row"><span class="result-label">Doses per vial</span><span class="result-value" id="durDoses">—</span></div>
+          <div class="result-row highlight"><span class="result-label">Days of use</span><span class="result-value" id="durDays">—</span></div>
+          <div class="result-row"><span class="result-label">Estimated empty date</span><span class="result-value" id="durEmpty">—</span></div>
+          <div class="result-row"><span class="result-label">Remaining after BAC expiry</span><span class="result-value" id="durWaste">—</span></div>
+        </div>
+        <div id="durWarn" class="warn-box" hidden></div>
+      </div>
+    </div>
+
+    <details class="faq">
+      <summary>Why does BAC water shelf life matter?</summary>
+      <p>Bacteriostatic water carries a commonly referenced shelf life (often 28 days from first puncture, per manufacturer guidance for research-grade product). If a vial would outlast that window, some reconstituted material may be discarded. Changing the amount of water added is one way to shift doses-per-vial.</p>
     </details>
   </section>
 
@@ -227,6 +354,13 @@
         <div class="result-card"><div class="result-row"><span class="result-label">Result</span><span class="result-value" id="iuResult">—</span></div></div>
       </div>
     </div>
+  </section>
+
+  <section id="quiz" class="panel" role="tabpanel">
+    <h2>Research Topics Finder</h2>
+    <p class="hint">Select areas of research interest and we'll surface glossary terms, literature categories, and simulator tools relevant to that space. <strong>This is a navigation aid — it does not recommend any substance, dose, or protocol.</strong></p>
+
+    <div id="quizStage"></div>
   </section>
 
   <section id="glossary" class="panel" role="tabpanel">
