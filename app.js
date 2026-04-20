@@ -9,394 +9,324 @@
       const target = tab.dataset.tab;
       tabs.forEach(t => t.classList.toggle('active', t === tab));
       panels.forEach(p => p.classList.toggle('active', p.id === target));
+      if (target === 'halflife') renderHalfLife();
     });
   });
 
-  // ---------- SERP Preview ----------
-  const serpTitle = document.getElementById('serpTitle');
-  const serpUrl = document.getElementById('serpUrl');
-  const serpDesc = document.getElementById('serpDesc');
-  const serpPreview = document.getElementById('serpPreview');
-  const serpPreviewTitle = document.getElementById('serpPreviewTitle');
-  const serpPreviewUrl = document.getElementById('serpPreviewUrl');
-  const serpPreviewDesc = document.getElementById('serpPreviewDesc');
-  const serpTitleCount = document.getElementById('serpTitleCount');
-  const serpDescCount = document.getElementById('serpDescCount');
-  const serpChecklist = document.getElementById('serpChecklist');
-  const deviceDesktop = document.getElementById('serpDeviceDesktop');
-  const deviceMobile = document.getElementById('serpDeviceMobile');
+  // ---------- Reconstitution Calculator ----------
+  const reconVialMg = document.getElementById('reconVialMg');
+  const reconWaterMl = document.getElementById('reconWaterMl');
+  const reconDoseMcg = document.getElementById('reconDoseMcg');
+  const reconSyringe = document.getElementById('reconSyringe');
+  const reconConc = document.getElementById('reconConc');
+  const reconVol = document.getElementById('reconVol');
+  const reconUnits = document.getElementById('reconUnits');
+  const reconDoses = document.getElementById('reconDoses');
+  const reconWarn = document.getElementById('reconWarn');
 
-  function formatSerpUrl(raw) {
-    if (!raw) return 'example.com › page';
-    try {
-      const u = new URL(raw.startsWith('http') ? raw : 'https://' + raw);
-      const parts = u.pathname.split('/').filter(Boolean);
-      return [u.hostname].concat(parts).join(' › ');
-    } catch (e) {
-      return raw;
+  function renderRecon() {
+    const mg = parseFloat(reconVialMg.value) || 0;
+    const ml = parseFloat(reconWaterMl.value) || 0;
+    const doseMcg = parseFloat(reconDoseMcg.value) || 0;
+    const unitsPerMl = parseFloat(reconSyringe.value);
+
+    if (mg <= 0 || ml <= 0 || doseMcg <= 0) {
+      reconConc.textContent = '—';
+      reconVol.textContent = '—';
+      reconUnits.textContent = '—';
+      reconDoses.textContent = '—';
+      reconWarn.hidden = true;
+      return;
     }
-  }
 
-  function truncate(str, max) {
-    if (!str) return '';
-    return str.length > max ? str.substring(0, max - 1).trimEnd() + '…' : str;
-  }
+    const mcgPerMl = (mg * 1000) / ml;
+    const doseVolMl = doseMcg / mcgPerMl;
+    const drawUnits = doseVolMl * unitsPerMl;
+    const totalDoses = Math.floor((mg * 1000) / doseMcg);
 
-  function updateCounter(el, current, max) {
-    el.textContent = current + ' / ' + max;
-    el.classList.toggle('warn', current > max * 0.9 && current <= max);
-    el.classList.toggle('bad', current > max);
-  }
+    reconConc.textContent = mcgPerMl.toFixed(0) + ' mcg/mL (' + (mcgPerMl / 1000).toFixed(3) + ' mg/mL)';
+    reconVol.textContent = doseVolMl.toFixed(3) + ' mL';
+    reconUnits.textContent = drawUnits.toFixed(1) + ' units';
+    reconDoses.textContent = totalDoses + ' doses';
 
-  function renderSerp() {
-    const title = serpTitle.value || 'Your page title';
-    const url = serpUrl.value;
-    const desc = serpDesc.value || 'A compelling description of the page...';
-    const isMobile = serpPreview.classList.contains('mobile');
-    const titleMax = isMobile ? 55 : 60;
-    const descMax = isMobile ? 130 : 160;
-
-    serpPreviewTitle.textContent = truncate(title, titleMax);
-    serpPreviewUrl.textContent = formatSerpUrl(url);
-    serpPreviewDesc.textContent = truncate(desc, descMax);
-
-    updateCounter(serpTitleCount, serpTitle.value.length, 60);
-    updateCounter(serpDescCount, serpDesc.value.length, 160);
-
-    renderSerpChecklist();
-  }
-
-  function renderSerpChecklist() {
-    const title = serpTitle.value;
-    const desc = serpDesc.value;
-    const checks = [];
-
-    if (!title) {
-      checks.push({ s: 'bad', t: 'Add a title tag' });
-    } else if (title.length < 30) {
-      checks.push({ s: 'warn', t: 'Title is short (aim for 30-60 characters)' });
-    } else if (title.length > 60) {
-      checks.push({ s: 'warn', t: 'Title may be truncated in search results' });
+    const syringeMax = unitsPerMl === 100 ? 100 : unitsPerMl;
+    if (drawUnits > syringeMax) {
+      reconWarn.textContent = 'Draw volume (' + drawUnits.toFixed(1) + ' units) exceeds selected syringe capacity (' + syringeMax + ' units). Consider a larger syringe or less water in the reconstitution.';
+      reconWarn.hidden = false;
+    } else if (drawUnits < 1) {
+      reconWarn.textContent = 'Draw volume is under 1 unit — small measurement errors will have a large proportional impact. Consider using less water to increase volume per dose.';
+      reconWarn.hidden = false;
     } else {
-      checks.push({ s: 'ok', t: 'Title length is optimal' });
+      reconWarn.hidden = true;
     }
+  }
 
-    if (!desc) {
-      checks.push({ s: 'bad', t: 'Add a meta description' });
-    } else if (desc.length < 70) {
-      checks.push({ s: 'warn', t: 'Description is short (aim for 120-160 characters)' });
-    } else if (desc.length > 160) {
-      checks.push({ s: 'warn', t: 'Description may be truncated' });
-    } else {
-      checks.push({ s: 'ok', t: 'Description length is optimal' });
-    }
+  [reconVialMg, reconWaterMl, reconDoseMcg, reconSyringe].forEach(el => {
+    el.addEventListener('input', renderRecon);
+    el.addEventListener('change', renderRecon);
+  });
+  renderRecon();
 
-    if (title && /[!?]/.test(title)) {
-      checks.push({ s: 'ok', t: 'Title uses engaging punctuation' });
-    }
+  // ---------- Half-Life Simulator ----------
+  const hlDose = document.getElementById('hlDose');
+  const hlFreq = document.getElementById('hlFreq');
+  const hlCustom = document.getElementById('hlCustom');
+  const hlCustomWrap = document.getElementById('hlCustomWrap');
+  const hlHalf = document.getElementById('hlHalf');
+  const hlDuration = document.getElementById('hlDuration');
+  const hlCanvas = document.getElementById('hlChart');
+  const hlCmax = document.getElementById('hlCmax');
+  const hlCmin = document.getElementById('hlCmin');
+  const hlSteady = document.getElementById('hlSteady');
 
-    if (title && desc) {
-      const titleWords = new Set(title.toLowerCase().match(/\b\w{4,}\b/g) || []);
-      const descWords = new Set(desc.toLowerCase().match(/\b\w{4,}\b/g) || []);
-      const overlap = [...titleWords].filter(w => descWords.has(w));
-      if (overlap.length === 0) {
-        checks.push({ s: 'warn', t: 'Title and description share no keywords' });
-      } else {
-        checks.push({ s: 'ok', t: 'Title and description share keywords (' + overlap.slice(0, 3).join(', ') + ')' });
+  hlFreq.addEventListener('change', () => {
+    hlCustomWrap.hidden = hlFreq.value !== 'custom';
+    renderHalfLife();
+  });
+
+  function getInterval() {
+    return hlFreq.value === 'custom' ? parseFloat(hlCustom.value) || 24 : parseFloat(hlFreq.value);
+  }
+
+  function renderHalfLife() {
+    const dose = parseFloat(hlDose.value) || 0;
+    const interval = getInterval();
+    const halfLife = parseFloat(hlHalf.value) || 1;
+    const days = Math.min(60, Math.max(1, parseFloat(hlDuration.value) || 7));
+    const totalHours = days * 24;
+    const k = Math.log(2) / halfLife;
+    const step = Math.max(0.25, totalHours / 500);
+
+    const points = [];
+    let conc = 0;
+    let lastDose = -interval;
+    let cmax = 0, cmin = Infinity;
+    let steadyReachedAt = null;
+    const steadyTarget = dose / (1 - Math.exp(-k * interval));
+
+    for (let t = 0; t <= totalHours; t += step) {
+      while (t >= lastDose + interval) {
+        lastDose += interval;
+        const decay = Math.exp(-k * (t - lastDose));
+        conc = conc * Math.exp(-k * (lastDose - (lastDose - interval > 0 ? lastDose - interval : 0)));
       }
     }
 
-    serpChecklist.innerHTML = checks.map(c => {
-      const sym = c.s === 'ok' ? '✓' : c.s === 'warn' ? '!' : '✕';
-      return '<li><span class="check-icon ' + c.s + '">' + sym + '</span><span>' + escapeHtml(c.t) + '</span></li>';
-    }).join('');
-  }
+    const doseTimes = [];
+    for (let d = 0; d <= totalHours; d += interval) doseTimes.push(d);
 
-  [serpTitle, serpUrl, serpDesc].forEach(el => el.addEventListener('input', renderSerp));
-
-  deviceDesktop.addEventListener('click', () => {
-    serpPreview.classList.remove('mobile');
-    serpPreview.classList.add('desktop');
-    deviceDesktop.classList.add('active');
-    deviceMobile.classList.remove('active');
-    renderSerp();
-  });
-
-  deviceMobile.addEventListener('click', () => {
-    serpPreview.classList.add('mobile');
-    serpPreview.classList.remove('desktop');
-    deviceMobile.classList.add('active');
-    deviceDesktop.classList.remove('active');
-    renderSerp();
-  });
-
-  renderSerp();
-
-  // ---------- Meta Analyzer ----------
-  const metaInput = document.getElementById('metaInput');
-  const metaResults = document.getElementById('metaResults');
-
-  document.getElementById('metaAnalyze').addEventListener('click', () => {
-    const html = metaInput.value.trim();
-    if (!html) {
-      metaResults.innerHTML = '<p class="hint">Paste some HTML first.</p>';
-      return;
+    const sampled = [];
+    for (let t = 0; t <= totalHours; t += step) {
+      let c = 0;
+      for (const dt of doseTimes) {
+        if (t >= dt) c += dose * Math.exp(-k * (t - dt));
+      }
+      sampled.push({ t, c });
+      if (c > cmax) cmax = c;
     }
 
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-
-    const title = doc.querySelector('title')?.textContent?.trim() || '';
-    const desc = doc.querySelector('meta[name="description"]')?.getAttribute('content')?.trim() || '';
-    const canonical = doc.querySelector('link[rel="canonical"]')?.getAttribute('href') || '';
-    const robots = doc.querySelector('meta[name="robots"]')?.getAttribute('content') || '';
-    const viewport = doc.querySelector('meta[name="viewport"]')?.getAttribute('content') || '';
-    const charset = doc.querySelector('meta[charset]')?.getAttribute('charset') || '';
-    const lang = doc.querySelector('html')?.getAttribute('lang') || '';
-
-    const og = {};
-    doc.querySelectorAll('meta[property^="og:"]').forEach(m => {
-      og[m.getAttribute('property')] = m.getAttribute('content');
-    });
-
-    const twitter = {};
-    doc.querySelectorAll('meta[name^="twitter:"]').forEach(m => {
-      twitter[m.getAttribute('name')] = m.getAttribute('content');
-    });
-
-    const headings = {
-      h1: Array.from(doc.querySelectorAll('h1')).map(h => h.textContent.trim()),
-      h2: Array.from(doc.querySelectorAll('h2')).map(h => h.textContent.trim())
-    };
-
-    const checks = [];
-    checks.push(titleCheck(title));
-    checks.push(descCheck(desc));
-    checks.push({ s: canonical ? 'ok' : 'warn', t: canonical ? 'Canonical URL set' : 'No canonical URL — consider adding one' });
-    checks.push({ s: viewport ? 'ok' : 'warn', t: viewport ? 'Viewport meta tag set' : 'Missing viewport meta tag (mobile)' });
-    checks.push({ s: lang ? 'ok' : 'warn', t: lang ? 'HTML lang attribute: ' + lang : 'Missing html lang attribute' });
-    checks.push({ s: og['og:title'] ? 'ok' : 'warn', t: og['og:title'] ? 'Open Graph title set' : 'Missing og:title' });
-    checks.push({ s: og['og:description'] ? 'ok' : 'warn', t: og['og:description'] ? 'Open Graph description set' : 'Missing og:description' });
-    checks.push({ s: og['og:image'] ? 'ok' : 'warn', t: og['og:image'] ? 'Open Graph image set' : 'Missing og:image' });
-    checks.push({ s: headings.h1.length === 1 ? 'ok' : headings.h1.length === 0 ? 'bad' : 'warn',
-                  t: headings.h1.length === 1 ? 'Exactly one H1 found' : headings.h1.length === 0 ? 'No H1 tag found' : 'Multiple H1 tags (' + headings.h1.length + ')' });
-
-    let out = '<div class="meta-group"><h3>Summary</h3><ul class="checklist">';
-    out += checks.map(c => {
-      const sym = c.s === 'ok' ? '✓' : c.s === 'warn' ? '!' : '✕';
-      return '<li><span class="check-icon ' + c.s + '">' + sym + '</span><span>' + escapeHtml(c.t) + '</span></li>';
-    }).join('');
-    out += '</ul></div>';
-
-    out += '<div class="meta-group"><h3>Core tags</h3>';
-    out += metaRow('Title', title + (title ? ' (' + title.length + ' chars)' : ''));
-    out += metaRow('Description', desc + (desc ? ' (' + desc.length + ' chars)' : ''));
-    out += metaRow('Canonical', canonical);
-    out += metaRow('Robots', robots);
-    out += metaRow('Viewport', viewport);
-    out += metaRow('Charset', charset);
-    out += metaRow('Lang', lang);
-    out += '</div>';
-
-    if (Object.keys(og).length) {
-      out += '<div class="meta-group"><h3>Open Graph</h3>';
-      Object.keys(og).forEach(k => { out += metaRow(k, og[k]); });
-      out += '</div>';
-    }
-
-    if (Object.keys(twitter).length) {
-      out += '<div class="meta-group"><h3>Twitter</h3>';
-      Object.keys(twitter).forEach(k => { out += metaRow(k, twitter[k]); });
-      out += '</div>';
-    }
-
-    out += '<div class="meta-group"><h3>Headings</h3>';
-    out += metaRow('H1 (' + headings.h1.length + ')', headings.h1.join(' | ') || '—');
-    out += metaRow('H2 (' + headings.h2.length + ')', headings.h2.slice(0, 10).join(' | ') || '—');
-    out += '</div>';
-
-    metaResults.innerHTML = out;
-  });
-
-  function titleCheck(title) {
-    if (!title) return { s: 'bad', t: 'Missing <title> tag' };
-    if (title.length < 30) return { s: 'warn', t: 'Title is short (' + title.length + ' chars)' };
-    if (title.length > 60) return { s: 'warn', t: 'Title may be truncated (' + title.length + ' chars)' };
-    return { s: 'ok', t: 'Title length is optimal (' + title.length + ' chars)' };
-  }
-
-  function descCheck(desc) {
-    if (!desc) return { s: 'bad', t: 'Missing meta description' };
-    if (desc.length < 70) return { s: 'warn', t: 'Description is short (' + desc.length + ' chars)' };
-    if (desc.length > 160) return { s: 'warn', t: 'Description may be truncated (' + desc.length + ' chars)' };
-    return { s: 'ok', t: 'Description length is optimal (' + desc.length + ' chars)' };
-  }
-
-  function metaRow(label, value) {
-    return '<div class="meta-row"><div class="meta-row-label">' + escapeHtml(label) +
-           '</div><div class="meta-row-value">' + escapeHtml(value || '—') + '</div></div>';
-  }
-
-  // ---------- Keyword Density ----------
-  const STOPWORDS = new Set(('a an the and or but if then else for to of in on at by with about against between into ' +
-    'through during before after above below from up down out over under again further once here there when where why how ' +
-    'all any both each few more most other some such no nor not only own same so than too very can will just don should ' +
-    'now i me my we our you your he him his she her it its they them their what which who this that these those am is ' +
-    'are was were be been being have has had do does did doing would could should may might must shall as').split(' '));
-
-  document.getElementById('kwAnalyze').addEventListener('click', () => {
-    const text = document.getElementById('kwInput').value.trim();
-    const n = parseInt(document.querySelector('input[name="ngram"]:checked').value, 10);
-    const results = document.getElementById('kwResults');
-
-    if (!text) {
-      results.innerHTML = '<p class="hint">Paste some content first.</p>';
-      return;
-    }
-
-    const words = text.toLowerCase().match(/\b[a-z][a-z'-]{1,}\b/g) || [];
-    const filtered = words.filter(w => !STOPWORDS.has(w));
-    const total = words.length;
-
-    const counts = {};
-    if (n === 1) {
-      filtered.forEach(w => { counts[w] = (counts[w] || 0) + 1; });
-    } else {
-      for (let i = 0; i <= words.length - n; i++) {
-        const gram = words.slice(i, i + n);
-        if (gram.some(w => STOPWORDS.has(w))) continue;
-        const key = gram.join(' ');
-        counts[key] = (counts[key] || 0) + 1;
+    if (steadyTarget > 0) {
+      for (let i = 0; i < sampled.length; i++) {
+        if (sampled[i].c >= 0.95 * steadyTarget) { steadyReachedAt = sampled[i].t; break; }
       }
     }
 
-    const entries = Object.entries(counts)
-      .filter(([, c]) => c > 1)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 25);
-
-    if (!entries.length) {
-      results.innerHTML = '<p class="hint">No repeated ' + n + '-word phrases found.</p>';
-      return;
+    const tailStart = sampled.findIndex(p => p.t >= totalHours - interval);
+    if (tailStart >= 0) {
+      cmin = Infinity;
+      for (let i = tailStart; i < sampled.length; i++) {
+        if (sampled[i].c < cmin) cmin = sampled[i].c;
+      }
     }
 
-    let out = '<div class="stat-grid">' +
-      '<div class="stat"><div class="stat-num">' + total + '</div><div class="stat-label">Total words</div></div>' +
-      '<div class="stat"><div class="stat-num">' + new Set(words).size + '</div><div class="stat-label">Unique words</div></div>' +
-      '<div class="stat"><div class="stat-num">' + entries.length + '</div><div class="stat-label">Repeated phrases</div></div>' +
-      '</div>';
+    drawChart(hlCanvas, sampled, totalHours, cmax);
 
-    out += '<table><thead><tr><th>' + (n === 1 ? 'Word' : 'Phrase') + '</th><th>Count</th><th>Density</th></tr></thead><tbody>';
-    entries.forEach(([k, c]) => {
-      const density = ((c * n) / total * 100).toFixed(2) + '%';
-      out += '<tr><td>' + escapeHtml(k) + '</td><td>' + c + '</td><td>' + density + '</td></tr>';
+    hlCmax.textContent = cmax.toFixed(2);
+    hlCmin.textContent = (cmin === Infinity ? 0 : cmin).toFixed(2);
+    hlSteady.textContent = steadyReachedAt === null ? '> ' + days + ' d' : (steadyReachedAt / 24).toFixed(1) + ' d';
+  }
+
+  function drawChart(canvas, points, maxX, maxY) {
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const cssW = canvas.clientWidth || 500;
+    const cssH = 280;
+    canvas.width = cssW * dpr;
+    canvas.height = cssH * dpr;
+    canvas.style.height = cssH + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    const pad = { l: 44, r: 12, t: 12, b: 28 };
+    const w = cssW - pad.l - pad.r;
+    const h = cssH - pad.t - pad.b;
+
+    ctx.clearRect(0, 0, cssW, cssH);
+    ctx.strokeStyle = '#e3e6ee';
+    ctx.lineWidth = 1;
+    ctx.fillStyle = '#6b7391';
+    ctx.font = '11px -apple-system, sans-serif';
+
+    const yTicks = 4;
+    for (let i = 0; i <= yTicks; i++) {
+      const y = pad.t + h - (h * i / yTicks);
+      ctx.beginPath();
+      ctx.moveTo(pad.l, y);
+      ctx.lineTo(pad.l + w, y);
+      ctx.stroke();
+      ctx.fillText((maxY * i / yTicks).toFixed(1), 4, y + 3);
+    }
+
+    const days = maxX / 24;
+    const dayTicks = Math.min(days, 10);
+    for (let i = 0; i <= dayTicks; i++) {
+      const x = pad.l + (w * i / dayTicks);
+      const dayLabel = Math.round(days * i / dayTicks);
+      ctx.fillText('d' + dayLabel, x - 8, cssH - 8);
+    }
+
+    if (!points.length || maxY <= 0) return;
+
+    ctx.strokeStyle = '#0b7a6b';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    points.forEach((p, i) => {
+      const x = pad.l + (p.t / maxX) * w;
+      const y = pad.t + h - (p.c / maxY) * h;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
     });
-    out += '</tbody></table>';
-    results.innerHTML = out;
-  });
+    ctx.stroke();
 
-  // ---------- Readability ----------
-  document.getElementById('readAnalyze').addEventListener('click', () => {
-    const text = document.getElementById('readInput').value.trim();
-    const results = document.getElementById('readResults');
-
-    if (!text) {
-      results.innerHTML = '<p class="hint">Paste some content first.</p>';
-      return;
-    }
-
-    const sentences = text.split(/[.!?]+(?:\s|$)/).filter(s => s.trim().length > 0);
-    const words = text.match(/\b[a-zA-Z][a-zA-Z'-]*\b/g) || [];
-    const syllables = words.reduce((sum, w) => sum + countSyllables(w), 0);
-
-    const sentCount = Math.max(sentences.length, 1);
-    const wordCount = Math.max(words.length, 1);
-
-    const flesch = 206.835 - 1.015 * (wordCount / sentCount) - 84.6 * (syllables / wordCount);
-    const rounded = Math.max(0, Math.min(100, flesch)).toFixed(1);
-
-    let grade, desc;
-    if (flesch >= 90) { grade = '5th grade'; desc = 'Very easy to read.'; }
-    else if (flesch >= 80) { grade = '6th grade'; desc = 'Easy to read.'; }
-    else if (flesch >= 70) { grade = '7th grade'; desc = 'Fairly easy to read.'; }
-    else if (flesch >= 60) { grade = '8th-9th grade'; desc = 'Plain English — recommended for web content.'; }
-    else if (flesch >= 50) { grade = '10th-12th grade'; desc = 'Fairly difficult to read.'; }
-    else if (flesch >= 30) { grade = 'College'; desc = 'Difficult to read.'; }
-    else { grade = 'College graduate'; desc = 'Very difficult to read.'; }
-
-    const avgWordsPerSentence = (wordCount / sentCount).toFixed(1);
-    const avgSyllablesPerWord = (syllables / wordCount).toFixed(2);
-    const readingTime = Math.max(1, Math.round(wordCount / 200));
-
-    const out = '<div class="score-card">' +
-      '<div><div class="score-value">' + rounded + '</div><div class="score-label">Flesch Score</div></div>' +
-      '<div><div class="score-desc"><strong>' + grade + '</strong></div><div>' + desc + '</div></div>' +
-      '</div>' +
-      '<div class="stat-grid">' +
-      '<div class="stat"><div class="stat-num">' + wordCount + '</div><div class="stat-label">Words</div></div>' +
-      '<div class="stat"><div class="stat-num">' + sentCount + '</div><div class="stat-label">Sentences</div></div>' +
-      '<div class="stat"><div class="stat-num">' + avgWordsPerSentence + '</div><div class="stat-label">Words / sentence</div></div>' +
-      '<div class="stat"><div class="stat-num">' + avgSyllablesPerWord + '</div><div class="stat-label">Syllables / word</div></div>' +
-      '<div class="stat"><div class="stat-num">' + readingTime + ' min</div><div class="stat-label">Reading time</div></div>' +
-      '</div>';
-
-    results.innerHTML = out;
-  });
-
-  function countSyllables(word) {
-    word = word.toLowerCase();
-    if (word.length <= 3) return 1;
-    word = word.replace(/(?:[^laeiouy]es|ed|[^laeiouy]e)$/, '');
-    word = word.replace(/^y/, '');
-    const m = word.match(/[aeiouy]{1,2}/g);
-    return m ? m.length : 1;
+    ctx.fillStyle = 'rgba(11, 122, 107, 0.12)';
+    ctx.lineTo(pad.l + w, pad.t + h);
+    ctx.lineTo(pad.l, pad.t + h);
+    ctx.closePath();
+    ctx.fill();
   }
 
-  // ---------- Slug Generator ----------
-  const SLUG_STOPWORDS = new Set(('a an the and or but of in on at to for with by is are was were be been being ' +
-    'that this these those').split(' '));
+  [hlDose, hlCustom, hlHalf, hlDuration].forEach(el => el.addEventListener('input', renderHalfLife));
+  window.addEventListener('resize', () => { if (document.getElementById('halflife').classList.contains('active')) renderHalfLife(); });
 
-  const slugInput = document.getElementById('slugInput');
-  const slugResult = document.getElementById('slugResult');
-  const slugStopwords = document.getElementById('slugStopwords');
+  // ---------- Cycle Planner ----------
+  const cycleName = document.getElementById('cycleName');
+  const cycleOn = document.getElementById('cycleOn');
+  const cycleOff = document.getElementById('cycleOff');
+  const cycleCount = document.getElementById('cycleCount');
+  const cycleStart = document.getElementById('cycleStart');
+  const cycleTimeline = document.getElementById('cycleTimeline');
+  const cycleSummary = document.getElementById('cycleSummary');
 
-  function makeSlug() {
-    const raw = slugInput.value.trim();
-    if (!raw) {
-      slugResult.textContent = 'your-slug-here';
-      return;
+  cycleStart.valueAsDate = new Date();
+
+  function renderCycle() {
+    const name = cycleName.value || 'Cycle';
+    const on = Math.max(1, parseInt(cycleOn.value) || 0);
+    const off = Math.max(0, parseInt(cycleOff.value) || 0);
+    const count = Math.max(1, Math.min(10, parseInt(cycleCount.value) || 1));
+    const start = cycleStart.valueAsDate || new Date();
+
+    cycleTimeline.innerHTML = '';
+    const totalWeeks = (on + off) * count;
+    const weeksPerWidth = totalWeeks;
+
+    let cursor = new Date(start);
+    for (let i = 1; i <= count; i++) {
+      const row = document.createElement('div');
+      row.className = 'timeline-row';
+      const label = document.createElement('div');
+      label.className = 'timeline-label';
+      label.textContent = name + ' #' + i;
+      const bar = document.createElement('div');
+      bar.className = 'timeline-bar';
+
+      const onPart = document.createElement('div');
+      onPart.className = 'timeline-on';
+      onPart.style.width = (on / (on + off) * 100) + '%';
+      onPart.textContent = on + 'w on';
+
+      const offPart = document.createElement('div');
+      offPart.className = 'timeline-off';
+      offPart.style.width = (off / (on + off) * 100) + '%';
+      offPart.textContent = off > 0 ? off + 'w off' : '';
+
+      bar.appendChild(onPart);
+      if (off > 0) bar.appendChild(offPart);
+      row.appendChild(label);
+      row.appendChild(bar);
+      cycleTimeline.appendChild(row);
     }
-    let s = raw.toLowerCase()
-      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9\s-]/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
 
-    let parts = s.split(' ');
-    if (slugStopwords.checked) {
-      const filtered = parts.filter(w => !SLUG_STOPWORDS.has(w));
-      if (filtered.length) parts = filtered;
-    }
-    slugResult.textContent = parts.join('-').replace(/-+/g, '-') || 'your-slug-here';
+    const endDate = new Date(start);
+    endDate.setDate(endDate.getDate() + totalWeeks * 7);
+
+    cycleSummary.innerHTML =
+      '<div class="result-row"><span class="result-label">Total duration</span><span class="result-value">' + totalWeeks + ' weeks</span></div>' +
+      '<div class="result-row"><span class="result-label">Total on-time</span><span class="result-value">' + (on * count) + ' weeks</span></div>' +
+      '<div class="result-row"><span class="result-label">Total off-time</span><span class="result-value">' + (off * count) + ' weeks</span></div>' +
+      '<div class="result-row"><span class="result-label">End date</span><span class="result-value">' + endDate.toLocaleDateString() + '</span></div>';
   }
 
-  slugInput.addEventListener('input', makeSlug);
-  slugStopwords.addEventListener('change', makeSlug);
-
-  document.getElementById('slugCopy').addEventListener('click', () => {
-    const text = slugResult.textContent;
-    navigator.clipboard?.writeText(text).then(() => {
-      const btn = document.getElementById('slugCopy');
-      const orig = btn.textContent;
-      btn.textContent = 'Copied!';
-      setTimeout(() => { btn.textContent = orig; }, 1200);
-    });
+  [cycleName, cycleOn, cycleOff, cycleCount, cycleStart].forEach(el => {
+    el.addEventListener('input', renderCycle);
+    el.addEventListener('change', renderCycle);
   });
+  renderCycle();
 
-  // ---------- Utils ----------
-  function escapeHtml(str) {
-    return String(str || '').replace(/[&<>"']/g, c => ({
-      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-    })[c]);
+  // ---------- Unit Converter ----------
+  const massValue = document.getElementById('massValue');
+  const massFrom = document.getElementById('massFrom');
+  const massTo = document.getElementById('massTo');
+  const massResult = document.getElementById('massResult');
+
+  function renderMass() {
+    const v = parseFloat(massValue.value) || 0;
+    const from = parseFloat(massFrom.value);
+    const to = parseFloat(massTo.value);
+    const result = v * from / to;
+    const toUnit = massTo.options[massTo.selectedIndex].text;
+    massResult.textContent = formatNumber(result) + ' ' + toUnit;
   }
+  [massValue, massFrom, massTo].forEach(el => el.addEventListener('input', renderMass));
+  [massFrom, massTo].forEach(el => el.addEventListener('change', renderMass));
+  renderMass();
+
+  const volMl = document.getElementById('volMl');
+  const volSyringe = document.getElementById('volSyringe');
+  const volUnits = document.getElementById('volUnits');
+
+  function renderVol() {
+    const ml = parseFloat(volMl.value) || 0;
+    const upm = parseFloat(volSyringe.value);
+    volUnits.textContent = (ml * upm).toFixed(1) + ' units';
+  }
+  [volMl, volSyringe].forEach(el => { el.addEventListener('input', renderVol); el.addEventListener('change', renderVol); });
+  renderVol();
+
+  const iuValue = document.getElementById('iuValue');
+  const iuFactor = document.getElementById('iuFactor');
+  const iuDir = document.getElementById('iuDir');
+  const iuResult = document.getElementById('iuResult');
+
+  function renderIu() {
+    const v = parseFloat(iuValue.value) || 0;
+    const f = parseFloat(iuFactor.value) || 1;
+    if (iuDir.value === 'iu2mg') {
+      iuResult.textContent = (v / f).toFixed(4) + ' mg';
+    } else {
+      iuResult.textContent = (v * f).toFixed(3) + ' IU';
+    }
+  }
+  [iuValue, iuFactor, iuDir].forEach(el => { el.addEventListener('input', renderIu); el.addEventListener('change', renderIu); });
+  renderIu();
+
+  function formatNumber(n) {
+    if (n === 0) return '0';
+    const abs = Math.abs(n);
+    if (abs >= 1000) return n.toFixed(0);
+    if (abs >= 1) return n.toFixed(3);
+    if (abs >= 0.001) return n.toFixed(4);
+    return n.toExponential(3);
+  }
+
+  renderHalfLife();
 })();

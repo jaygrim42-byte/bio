@@ -3,102 +3,247 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>SEO Toolkit — Analyze, Preview, and Optimize</title>
-<meta name="description" content="A free in-browser SEO toolkit: SERP preview, meta tag analyzer, keyword density, readability scoring, and slug generator." />
-<meta property="og:title" content="SEO Toolkit" />
-<meta property="og:description" content="Free in-browser SEO tools for content creators." />
+<title>Peptide Research Toolkit — Reconstitution Calculator, Half-Life Simulator & Cycle Planner</title>
+<meta name="description" content="Free educational tools for research peptide calculations: reconstitution calculator, half-life simulator, cycle planner, and unit converter. Simulation only — not medical advice." />
+<meta name="keywords" content="peptide reconstitution calculator, peptide dosage calculator, peptide half-life, how to mix peptides, cycle planner, BAC water calculator, mcg to mg converter" />
+<meta property="og:title" content="Peptide Research Toolkit" />
+<meta property="og:description" content="Educational calculators and simulators for research peptide math — reconstitution, half-life, cycles, conversions." />
 <meta property="og:type" content="website" />
+<meta name="robots" content="index, follow" />
+<link rel="canonical" href="/" />
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Peptide Research Toolkit",
+  "description": "Educational calculators for research peptide math: reconstitution, half-life simulation, cycle planning, and unit conversion.",
+  "applicationCategory": "EducationApplication",
+  "operatingSystem": "Any",
+  "offers": { "@type": "Offer", "price": "0" }
+}
+</script>
 <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+
+<div class="disclaimer-banner">
+  <strong>Research &amp; educational use only.</strong> These tools perform math and simulations. They are not medical advice, and nothing here recommends doses, substances, or protocols. Consult a qualified healthcare professional for health decisions.
+</div>
+
 <header class="site-header">
   <div class="container">
-    <h1>SEO Toolkit</h1>
-    <p class="tagline">Analyze, preview, and optimize — all in your browser.</p>
+    <h1>Peptide Research Toolkit</h1>
+    <p class="tagline">Calculators and simulators for research peptide math. Educational, non-prescriptive, in-browser.</p>
   </div>
 </header>
 
 <nav class="tabs container" role="tablist">
-  <button class="tab active" data-tab="serp" role="tab">SERP Preview</button>
-  <button class="tab" data-tab="meta" role="tab">Meta Analyzer</button>
-  <button class="tab" data-tab="keywords" role="tab">Keyword Density</button>
-  <button class="tab" data-tab="readability" role="tab">Readability</button>
-  <button class="tab" data-tab="slug" role="tab">Slug Generator</button>
+  <button class="tab active" data-tab="recon" role="tab">Reconstitution</button>
+  <button class="tab" data-tab="halflife" role="tab">Half-Life Simulator</button>
+  <button class="tab" data-tab="cycle" role="tab">Cycle Planner</button>
+  <button class="tab" data-tab="convert" role="tab">Unit Converter</button>
+  <button class="tab" data-tab="glossary" role="tab">Glossary</button>
 </nav>
 
 <main class="container">
 
-  <section id="serp" class="panel active" role="tabpanel">
-    <h2>Google SERP Preview</h2>
-    <p class="hint">See how your page appears in search results. Titles render differently on mobile vs desktop.</p>
+  <section id="recon" class="panel active" role="tabpanel">
+    <h2>Reconstitution Calculator</h2>
+    <p class="hint">Given the amount of peptide in a vial, the volume of bacteriostatic (or sterile) water added, and a desired dose, this calculates the volume and syringe units to draw. <strong>Math only — no dose recommendations.</strong></p>
+
     <div class="grid">
       <div class="form">
-        <label>Title <span class="counter" id="serpTitleCount">0 / 60</span>
-          <input type="text" id="serpTitle" placeholder="Your page title" maxlength="120" />
+        <label>Peptide in vial (mg)
+          <input type="number" id="reconVialMg" value="5" step="0.1" min="0" />
         </label>
-        <label>URL
-          <input type="text" id="serpUrl" placeholder="https://example.com/page" />
+        <label>Bacteriostatic water added (mL)
+          <input type="number" id="reconWaterMl" value="2" step="0.1" min="0" />
         </label>
-        <label>Meta description <span class="counter" id="serpDescCount">0 / 160</span>
-          <textarea id="serpDesc" rows="4" placeholder="A compelling description of the page..." maxlength="300"></textarea>
+        <label>Desired dose (mcg)
+          <input type="number" id="reconDoseMcg" value="250" step="10" min="0" />
         </label>
-        <div class="toggle-row">
-          <button id="serpDeviceDesktop" class="toggle active">Desktop</button>
-          <button id="serpDeviceMobile" class="toggle">Mobile</button>
-        </div>
+        <label>Syringe size
+          <select id="reconSyringe">
+            <option value="100">1 mL / 100-unit insulin syringe</option>
+            <option value="50">0.5 mL / 50-unit insulin syringe</option>
+            <option value="30">0.3 mL / 30-unit insulin syringe</option>
+          </select>
+        </label>
       </div>
 
       <div class="preview">
-        <div id="serpPreview" class="serp-card desktop">
-          <div class="serp-url" id="serpPreviewUrl">example.com › page</div>
-          <a class="serp-title" id="serpPreviewTitle">Your page title</a>
-          <p class="serp-desc" id="serpPreviewDesc">A compelling description of the page...</p>
+        <div class="result-card" id="reconResult">
+          <div class="result-row"><span class="result-label">Concentration</span><span class="result-value" id="reconConc">—</span></div>
+          <div class="result-row"><span class="result-label">Volume per dose</span><span class="result-value" id="reconVol">—</span></div>
+          <div class="result-row highlight"><span class="result-label">Draw to</span><span class="result-value" id="reconUnits">—</span></div>
+          <div class="result-row"><span class="result-label">Doses per vial</span><span class="result-value" id="reconDoses">—</span></div>
         </div>
-        <ul class="checklist" id="serpChecklist"></ul>
+        <div id="reconWarn" class="warn-box" hidden></div>
+      </div>
+    </div>
+
+    <details class="faq">
+      <summary>How is reconstitution volume calculated?</summary>
+      <p>Concentration = peptide mass ÷ water volume. Dose volume = dose ÷ concentration. Syringe units = dose volume × (units per mL). A 1 mL insulin syringe has 100 units, so 1 unit = 0.01 mL.</p>
+    </details>
+    <details class="faq">
+      <summary>What is bacteriostatic water?</summary>
+      <p>Bacteriostatic water is sterile water containing 0.9% benzyl alcohol, which inhibits microbial growth. It is used in laboratory research for reconstituting lyophilized (freeze-dried) compounds. This tool performs math — it does not recommend its use for any human application.</p>
+    </details>
+  </section>
+
+  <section id="halflife" class="panel" role="tabpanel">
+    <h2>Half-Life Simulator</h2>
+    <p class="hint">Plot simulated plasma concentration over time given a hypothetical dose, frequency, and half-life. First-order elimination, single-compartment model — educational only.</p>
+
+    <div class="grid">
+      <div class="form">
+        <label>Dose per administration (arbitrary units)
+          <input type="number" id="hlDose" value="100" step="1" min="0" />
+        </label>
+        <label>Frequency
+          <select id="hlFreq">
+            <option value="24">Once daily</option>
+            <option value="12">Every 12 hours</option>
+            <option value="8">Every 8 hours</option>
+            <option value="168">Once weekly</option>
+            <option value="custom">Custom (hours)</option>
+          </select>
+        </label>
+        <label id="hlCustomWrap" hidden>Custom interval (hours)
+          <input type="number" id="hlCustom" value="24" step="1" min="1" />
+        </label>
+        <label>Half-life (hours)
+          <input type="number" id="hlHalf" value="6" step="0.1" min="0.1" />
+        </label>
+        <label>Simulation duration (days)
+          <input type="number" id="hlDuration" value="7" step="1" min="1" max="60" />
+        </label>
+      </div>
+
+      <div class="preview">
+        <canvas id="hlChart" width="500" height="280"></canvas>
+        <div class="stat-grid">
+          <div class="stat"><div class="stat-num" id="hlCmax">—</div><div class="stat-label">Cmax</div></div>
+          <div class="stat"><div class="stat-num" id="hlCmin">—</div><div class="stat-label">Cmin (trough)</div></div>
+          <div class="stat"><div class="stat-num" id="hlSteady">—</div><div class="stat-label">Steady-state time</div></div>
+        </div>
+      </div>
+    </div>
+
+    <details class="faq">
+      <summary>What is half-life?</summary>
+      <p>Half-life (t½) is the time required for the concentration of a compound to decrease by 50% via elimination. After ~4–5 half-lives with consistent dosing, plasma concentration approaches steady state.</p>
+    </details>
+  </section>
+
+  <section id="cycle" class="panel" role="tabpanel">
+    <h2>Cycle Planner</h2>
+    <p class="hint">Visualize a research cycle timeline with on-period and off-period durations. This is a schedule visualizer — it doesn't recommend any specific cycle.</p>
+
+    <div class="grid">
+      <div class="form">
+        <label>Cycle name
+          <input type="text" id="cycleName" value="Research Block A" />
+        </label>
+        <label>On-period (weeks)
+          <input type="number" id="cycleOn" value="8" step="1" min="1" max="52" />
+        </label>
+        <label>Off-period (weeks)
+          <input type="number" id="cycleOff" value="4" step="1" min="0" max="52" />
+        </label>
+        <label>Number of cycles
+          <input type="number" id="cycleCount" value="3" step="1" min="1" max="10" />
+        </label>
+        <label>Start date
+          <input type="date" id="cycleStart" />
+        </label>
+      </div>
+      <div class="preview">
+        <div id="cycleTimeline" class="timeline"></div>
+        <div id="cycleSummary" class="result-card"></div>
       </div>
     </div>
   </section>
 
-  <section id="meta" class="panel" role="tabpanel">
-    <h2>Meta Tag Analyzer</h2>
-    <p class="hint">Paste the HTML of a page's <code>&lt;head&gt;</code> — we'll extract and grade the SEO-relevant tags.</p>
-    <textarea id="metaInput" rows="10" placeholder="Paste HTML here..."></textarea>
-    <button id="metaAnalyze" class="primary">Analyze</button>
-    <div id="metaResults" class="results"></div>
-  </section>
+  <section id="convert" class="panel" role="tabpanel">
+    <h2>Unit Converter</h2>
+    <p class="hint">Mass conversions common in research calculations. IU-to-mass conversion depends on the specific compound and potency — enter a conversion factor if you have one.</p>
 
-  <section id="keywords" class="panel" role="tabpanel">
-    <h2>Keyword Density</h2>
-    <p class="hint">Paste your content. We'll compute word and phrase frequencies.</p>
-    <textarea id="kwInput" rows="10" placeholder="Paste your content here..."></textarea>
-    <div class="toggle-row">
-      <label><input type="radio" name="ngram" value="1" checked /> 1 word</label>
-      <label><input type="radio" name="ngram" value="2" /> 2 words</label>
-      <label><input type="radio" name="ngram" value="3" /> 3 words</label>
+    <div class="stat-grid">
+      <div class="converter-box">
+        <h3>Mass</h3>
+        <label>Value
+          <input type="number" id="massValue" value="1" step="0.001" />
+        </label>
+        <label>From
+          <select id="massFrom">
+            <option value="1000000">g</option>
+            <option value="1000" selected>mg</option>
+            <option value="1">mcg</option>
+            <option value="0.001">ng</option>
+          </select>
+        </label>
+        <label>To
+          <select id="massTo">
+            <option value="1000000">g</option>
+            <option value="1000">mg</option>
+            <option value="1" selected>mcg</option>
+            <option value="0.001">ng</option>
+          </select>
+        </label>
+        <div class="result-card"><div class="result-row"><span class="result-label">Result</span><span class="result-value" id="massResult">—</span></div></div>
+      </div>
+
+      <div class="converter-box">
+        <h3>Volume ↔ Syringe Units</h3>
+        <label>Volume (mL)
+          <input type="number" id="volMl" value="0.1" step="0.001" />
+        </label>
+        <label>Syringe
+          <select id="volSyringe">
+            <option value="100">1 mL / 100-unit</option>
+            <option value="50">0.5 mL / 50-unit</option>
+            <option value="30">0.3 mL / 30-unit</option>
+          </select>
+        </label>
+        <div class="result-card"><div class="result-row"><span class="result-label">Units</span><span class="result-value" id="volUnits">—</span></div></div>
+      </div>
+
+      <div class="converter-box">
+        <h3>IU ↔ mg</h3>
+        <label>Value
+          <input type="number" id="iuValue" value="1" step="0.01" />
+        </label>
+        <label>Conversion factor (IU per mg)
+          <input type="number" id="iuFactor" value="3" step="0.01" />
+        </label>
+        <label>Direction
+          <select id="iuDir">
+            <option value="iu2mg">IU → mg</option>
+            <option value="mg2iu">mg → IU</option>
+          </select>
+        </label>
+        <div class="result-card"><div class="result-row"><span class="result-label">Result</span><span class="result-value" id="iuResult">—</span></div></div>
+      </div>
     </div>
-    <button id="kwAnalyze" class="primary">Analyze</button>
-    <div id="kwResults" class="results"></div>
   </section>
 
-  <section id="readability" class="panel" role="tabpanel">
-    <h2>Readability Score</h2>
-    <p class="hint">Uses the Flesch Reading Ease formula. Higher scores are easier to read.</p>
-    <textarea id="readInput" rows="10" placeholder="Paste your content here..."></textarea>
-    <button id="readAnalyze" class="primary">Analyze</button>
-    <div id="readResults" class="results"></div>
-  </section>
+  <section id="glossary" class="panel" role="tabpanel">
+    <h2>Research Glossary</h2>
+    <p class="hint">Plain-language definitions of terms encountered in peptide research literature. Definitions only — no product recommendations or protocols.</p>
 
-  <section id="slug" class="panel" role="tabpanel">
-    <h2>URL Slug Generator</h2>
-    <p class="hint">Produce a clean, SEO-friendly slug from any title.</p>
-    <input type="text" id="slugInput" placeholder="Enter a title..." />
-    <label class="checkbox">
-      <input type="checkbox" id="slugStopwords" checked />
-      Remove common stopwords (a, the, and, of, ...)
-    </label>
-    <div class="slug-output">
-      <code id="slugResult">your-slug-here</code>
-      <button id="slugCopy" class="secondary">Copy</button>
+    <div class="glossary-list">
+      <div class="glossary-item"><h3>Bioavailability</h3><p>The fraction of an administered dose that reaches systemic circulation unchanged. Intravenous administration is defined as 100% bioavailable; other routes are compared to it.</p></div>
+      <div class="glossary-item"><h3>Cmax</h3><p>The maximum observed plasma concentration after administration.</p></div>
+      <div class="glossary-item"><h3>Half-life (t½)</h3><p>Time required for plasma concentration to decrease by 50% due to elimination.</p></div>
+      <div class="glossary-item"><h3>Lyophilization</h3><p>Freeze-drying. A preservation method where water is removed from frozen material by sublimation, producing a dry powder that is reconstituted before use.</p></div>
+      <div class="glossary-item"><h3>Reconstitution</h3><p>The process of dissolving a lyophilized compound in a liquid (typically sterile or bacteriostatic water) to produce a solution.</p></div>
+      <div class="glossary-item"><h3>Steady state</h3><p>The condition under repeated dosing where the rate of drug input equals the rate of elimination; typically reached after 4–5 half-lives.</p></div>
+      <div class="glossary-item"><h3>Subcutaneous (SC)</h3><p>Beneath the skin. Subcutaneous injection deposits into the fatty tissue layer below the dermis.</p></div>
+      <div class="glossary-item"><h3>Peptide</h3><p>A short chain of amino acids linked by peptide bonds, typically fewer than 50 residues.</p></div>
+      <div class="glossary-item"><h3>Bacteriostatic water</h3><p>Sterile water containing 0.9% benzyl alcohol, which inhibits bacterial growth and allows multi-dose use from a single vial in research contexts.</p></div>
+      <div class="glossary-item"><h3>Volume of distribution (Vd)</h3><p>A theoretical volume that relates the amount of drug in the body to its plasma concentration.</p></div>
     </div>
   </section>
 
@@ -106,7 +251,7 @@
 
 <footer class="site-footer">
   <div class="container">
-    <p>All analysis happens locally in your browser. No data is sent anywhere.</p>
+    <p><strong>Disclaimer:</strong> This site provides educational calculators and definitions related to research peptides. It is not medical advice, a prescription, or a recommendation. No content on this site recommends any specific substance, dose, route, or protocol for any person or animal. Consult a qualified healthcare professional for health decisions. All calculations run locally in your browser — no data is collected or transmitted.</p>
   </div>
 </footer>
 
