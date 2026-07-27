@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "novamira-visual-pharmaqol": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "novamira-visual-mcp@latest"],
+      "env": {
+        "NOVAMIRA_VISUAL_WORKSPACE_URL": "https://pharmaqolab.co.uk/wp-admin/admin-post.php?action=novamira-visual"
+      }
+    }
+  }
+}
